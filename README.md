@@ -68,15 +68,28 @@ python XQTelegramNotifier.py
 
 ### 在 XQ 全球贏家中設定
 
-在你的 XQ 策略中使用以下方式將訊息寫入檔案：
+在您的 XQ 策略中使用以下方式將訊息寫入檔案：
 
 ```python
 # XQ 策略範例
-def main():
-    message = "買進信號：台積電 價格：500"
-
+if 買進條件成立:
+    message = "買進信號：" + symbol + " 價格：" + NumToStr(Close, 2)
     # 使用 XQ 的 print 函數將訊息寫到檔案
-    print(message, file="local/xq_trigger.txt")
+    print(file("D:\\G股網\\XQ alert to telegram\\local\\"), message, NumToStr(N, 0), symbol)
+
+if 賣出條件成立:
+    message = "賣出信號：" + symbol + " 價格：" + NumToStr(Close, 2)
+    print(file("D:\\G股網\\XQ alert to telegram\\local\\"), message, NumToStr(N, 0), symbol)
+```
+
+**重要提醒：**
+- 請將路徑 `D:\\G股網\\XQ alert to telegram\\local\\` 修改為您實際的安裝路徑
+- XQ 的 `file()` 函數會自動建立以 `symbol` 命名的檔案，但程式會監控 `xq_trigger.txt`
+- 建議在 XQ 中明確指定完整檔名：
+
+```python
+# 推薦寫法：明確指定監控檔案
+print(file("D:\\G股網\\XQ alert to telegram\\local\\xq_trigger.txt"), message)
 ```
 
 ## 檔案結構
