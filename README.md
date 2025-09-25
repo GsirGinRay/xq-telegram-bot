@@ -44,27 +44,16 @@ pip install -r requirements.txt
 
 ### 4. 啟動程式
 
-**方法一：圖形介面（推薦）**
+**圖形介面操作（推薦）**
 ```bash
 # Windows
 雙擊 "start_gui.bat"
 
-# 或者
+# 或者直接執行
 python gui.py
 ```
 
-**方法二：命令列**
-```bash
-python XQTelegramNotifier.py
-```
-
 ## 使用方式
-
-### 啟動監控程式
-
-```bash
-python XQTelegramNotifier.py
-```
 
 ### 在 XQ 全球贏家中設定
 
@@ -90,24 +79,6 @@ if isfirstcall("Realtime") and GetField("Volume", "Tick") > N then begin
 end;
 ```
 
-### 更多策略範例
-
-**交易信號策略：**
-```javascript
-// 買進信號範例
-vars: message("");
-
-if 買進條件成立 then begin
-    message = "買進信號";
-    print(file("D:\G股網\XQ alert to telegram\local\"), message, symbol, "價格:", NumToStr(Close, 2));
-end;
-
-// 賣出信號範例
-if 賣出條件成立 then begin
-    message = "賣出信號";
-    print(file("D:\G股網\XQ alert to telegram\local\"), message, symbol, "價格:", NumToStr(Close, 2));
-end;
-```
 
 **重要設定提醒：**
 - 📁 請將路征 `D:\G股網\XQ alert to telegram\local\` 修改為您實際的安裝路徑
@@ -118,19 +89,21 @@ end;
 ## 檔案結構
 
 ```
-XQ alert to telegram/
-├── XQTelegramNotifier.py  # 主程式
-├── config.json           # 設定檔
-├── requirements.txt      # Python 套件需求
+xq-telegram-bot/
+├── gui.py               # 圖形管理介面
+├── XQTelegramNotifier.py  # 核心監控程式
+├── config.example.json  # 範例設定檔
+├── requirements.txt     # Python 套件需求
+├── start_gui.bat        # Windows 啟動器
 ├── local/               # XQ 輸出目錄
-│   └── xq_trigger.txt   # XQ print 函數輸出檔案
+│   └── *.log           # XQ 自動產生的檔案
 └── README.md           # 說明文件
 ```
 
 ## 程式運作流程
 
-1. **XQ 策略執行** → 使用 `print()` 函數將訊息寫入 `local/xq_trigger.txt`
-2. **檔案監控** → 程式偵測到檔案變更
+1. **XQ 策略執行** → 使用 `print(file("路徑"), ...)` 將訊息寫入檔案
+2. **檔案監控** → 程式偵測到 `.txt` 或 `.log` 檔案變更
 3. **讀取內容** → 讀取最新的檔案內容
 4. **推播到 Telegram** → 將訊息發送到指定的聊天室
 
