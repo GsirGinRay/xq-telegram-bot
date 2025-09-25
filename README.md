@@ -68,29 +68,52 @@ python XQTelegramNotifier.py
 
 ### 在 XQ 全球贏家中設定
 
-在您的 XQ 策略中使用以下方式將訊息寫入檔案：
+以下是完整的 XQ 策略範例：
 
-```python
-# XQ 策略範例
-if 買進條件成立:
-    message = "買進信號：" + symbol + " 價格：" + NumToStr(Close, 2)
-    # 使用 XQ 的 print 函數將訊息寫到檔案
-    print(file("D:\\G股網\\XQ alert to telegram\\local\\"), message, NumToStr(N, 0), symbol)
+```javascript
+// 宣告參數
+input: N(100, "單量大於N");
 
-if 賣出條件成立:
-    message = "賣出信號：" + symbol + " 價格：" + NumToStr(Close, 2)
-    print(file("D:\\G股網\\XQ alert to telegram\\local\\"), message, NumToStr(N, 0), symbol)
+// 宣告變數
+vars: message("");
+
+// 設定需要讀取的歷史資料筆數（設為最小值1）
+settotalbar(1);
+
+// 設定變數值
+message = "單量大於";
+
+// 檢查條件：只在即時區間執行，避免載入時觸發
+if isfirstcall("Realtime") and GetField("Volume", "Tick") > N then begin
+    ret = 1;  // 選股策略中，表示選中
+    print(file("D:\G股網\XQ alert to telegram\local\"), message, NumToStr(N, 0), symbol);
+end;
 ```
 
-**重要提醒：**
-- 請將路徑 `D:\\G股網\\XQ alert to telegram\\local\\` 修改為您實際的安裝路徑
-- XQ 的 `file()` 函數會自動建立以 `symbol` 命名的檔案，但程式會監控 `xq_trigger.txt`
-- 建議在 XQ 中明確指定完整檔名：
+### 更多策略範例
 
-```python
-# 推薦寫法：明確指定監控檔案
-print(file("D:\\G股網\\XQ alert to telegram\\local\\xq_trigger.txt"), message)
+**交易信號策略：**
+```javascript
+// 買進信號範例
+vars: message("");
+
+if 買進條件成立 then begin
+    message = "買進信號";
+    print(file("D:\G股網\XQ alert to telegram\local\"), message, symbol, "價格:", NumToStr(Close, 2));
+end;
+
+// 賣出信號範例
+if 賣出條件成立 then begin
+    message = "賣出信號";
+    print(file("D:\G股網\XQ alert to telegram\local\"), message, symbol, "價格:", NumToStr(Close, 2));
+end;
 ```
+
+**重要設定提醒：**
+- 📁 請將路征 `D:\G股網\XQ alert to telegram\local\` 修改為您實際的安裝路徑
+- 🔄 使用 `isfirstcall("Realtime")` 確保只在即時資料觸發，避免歷史資料重複執行
+- 📊 XQ 會在 `local` 目錄下建立以股票代號命名的檔案（如 `2330.TW.log`）
+- 👀 本程式會監控所有 `.txt` 和 `.log` 檔案的變更
 
 ## 檔案結構
 
