@@ -25,14 +25,8 @@ class XQDirectoryMonitor:
     async def initialize_existing_files(self):
         """初始化現有檔案，記錄其狀態但不發送通知"""
         try:
-            # 搜尋所有 .log 檔案和 xq_trigger.txt
-            log_files = list(self.watch_directory.glob("*.log"))
-            trigger_file = self.watch_directory / "xq_trigger.txt"
-
-            # 加入 trigger 檔案到監控列表
-            all_files = log_files.copy()
-            if trigger_file.exists():
-                all_files.append(trigger_file)
+            # 只搜尋 .log 檔案
+            all_files = list(self.watch_directory.glob("*.log"))
 
             for file_path in all_files:
                 if not file_path.exists():
@@ -64,14 +58,8 @@ class XQDirectoryMonitor:
 
     async def check_and_send_updates(self):
         try:
-            # 搜尋所有 .log 檔案和 xq_trigger.txt
-            log_files = list(self.watch_directory.glob("*.log"))
-            trigger_file = self.watch_directory / "xq_trigger.txt"
-
-            # 加入 trigger 檔案到監控列表
-            all_files = log_files.copy()
-            if trigger_file.exists():
-                all_files.append(trigger_file)
+            # 只搜尋 .log 檔案
+            all_files = list(self.watch_directory.glob("*.log"))
 
             for file_path in all_files:
                 if not file_path.exists():
@@ -194,7 +182,7 @@ class XQTelegramNotifier:
             # 發送啟動通知
             await self.bot.send_message(
                 chat_id=self.chat_id,
-                text="✅ XQ Telegram 通知服務已啟動\n正在監控目錄中的 .log 檔案和 xq_trigger.txt...\n\n註：現有檔案不會推播，只推播新增的檔案"
+                text="✅ XQ Telegram 通知服務已啟動\n正在監控目錄中的 .log 檔案...\n\n註：現有檔案不會推播，只推播新增的檔案"
             )
 
             # 啟動監控
