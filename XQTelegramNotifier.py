@@ -22,6 +22,46 @@ class XQDirectoryMonitor:
         self.file_states = {}  # 儲存每個檔案的狀態
         self.running = False
 
+    async def initialize_existing_files(self):
+        """初始化現有檔案，記錄其狀態但不發送通知"""
+        try:
+            # 搜尋所有 .log 檔案和 xq_trigger.txt
+            log_files = list(self.watch_directory.glob("*.log"))
+            trigger_file = self.watch_directory / "xq_trigger.txt"
+
+            # 加入 trigger 檔案到監控列表
+            all_files = log_files.copy()
+            if trigger_file.exists():
+                all_files.append(trigger_file)
+
+            for file_path in all_files:
+                if not file_path.exists():
+                    continue
+
+                file_key = str(file_path)
+                current_modified = file_path.stat().st_mtime
+
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as file:
+                        content = file.read().strip()
+                except UnicodeDecodeError:
+                    try:
+                        with open(file_path, 'r', encoding='big5') as file:
+                            content = file.read().strip()
+                    except:
+                        content = ""
+
+                # 記錄現有檔案狀態，不發送通知
+                self.file_states[file_key] = {
+                    'modified': current_modified,
+                    'content': content,
+                    'initialized': True
+                }
+                logger.info(f"已記錄現有檔案: {file_path.name}")
+
+        except Exception as e:
+            logger.error(f"初始化現有檔案時發生錯誤: {e}")
+
     async def check_and_send_updates(self):
         try:
             # 搜尋所有 .log 檔案和 xq_trigger.txt
@@ -41,45 +81,73 @@ class XQDirectoryMonitor:
                 current_modified = file_path.stat().st_mtime
 
                 # 如果是新檔案或檔案有更新
-                if file_key not in self.file_states or current_modified > self.file_states[file_key]['modified']:
-                    # 等待一下確保檔案寫入完成
+                if file_key not in self.file_states:
+                    # 新檔案 - 需要發送通知
+                    await asyncio.sleep(0.5)  # 等待檔案寫入完成
+
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as file:
+                            content = file.read().strip()
+                    except UnicodeDecodeError:
+                        try:
+                            with open(file_path, 'r', encoding='big5') as file:
+                                content = file.read().strip()
+                        except:
+                            content = ""
+
+                    if content:
+                        logger.info(f"檢測到新檔案，準備發送: {file_path.name} - {content[:50]}...")
+
+                        # 加上時間戳記和檔案名稱
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        message = f"🔔 XQ 全球贏家通知 [{timestamp}]\n📁 新檔案: {file_path.name}\n\n{content}"
+
+                        await self.telegram_bot.send_message(
+                            chat_id=self.chat_id,
+                            text=message
+                        )
+                        logger.info(f"✅ 新檔案訊息已發送到 Telegram: {file_path.name}")
+
+                    # 記錄檔案狀態
+                    self.file_states[file_key] = {
+                        'modified': current_modified,
+                        'content': content
+                    }
+
+                elif current_modified > self.file_states[file_key]['modified']:
+                    # 現有檔案有更新 - 只有內容變更時才發送
                     await asyncio.sleep(0.5)
 
                     try:
                         with open(file_path, 'r', encoding='utf-8') as file:
                             content = file.read().strip()
                     except UnicodeDecodeError:
-                        # 如果UTF-8解碼失敗，嘗試其他編碼
-                        with open(file_path, 'r', encoding='big5') as file:
-                            content = file.read().strip()
+                        try:
+                            with open(file_path, 'r', encoding='big5') as file:
+                                content = file.read().strip()
+                        except:
+                            content = ""
 
-                    # 避免重複發送相同內容
-                    last_content = self.file_states.get(file_key, {}).get('content', '')
+                    last_content = self.file_states[file_key].get('content', '')
 
                     if content and content != last_content:
-                        logger.info(f"檔案內容變更，準備發送: {file_path.name} - {content[:50]}...")
+                        logger.info(f"檔案內容更新，準備發送: {file_path.name} - {content[:50]}...")
 
                         # 加上時間戳記和檔案名稱
                         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        message = f"🔔 XQ 全球贏家通知 [{timestamp}]\n📁 檔案: {file_path.name}\n\n{content}"
+                        message = f"🔔 XQ 全球贏家通知 [{timestamp}]\n📁 檔案更新: {file_path.name}\n\n{content}"
 
                         await self.telegram_bot.send_message(
                             chat_id=self.chat_id,
                             text=message
                         )
-                        logger.info(f"✅ 訊息已發送到 Telegram: {file_path.name}")
+                        logger.info(f"✅ 檔案更新訊息已發送到 Telegram: {file_path.name}")
 
-                        # 更新檔案狀態
-                        self.file_states[file_key] = {
-                            'modified': current_modified,
-                            'content': content
-                        }
-                    else:
-                        # 即使內容相同也要更新修改時間
-                        self.file_states[file_key] = {
-                            'modified': current_modified,
-                            'content': content if content else last_content
-                        }
+                    # 更新檔案狀態
+                    self.file_states[file_key] = {
+                        'modified': current_modified,
+                        'content': content
+                    }
 
         except Exception as e:
             logger.error(f"檢查檔案更新時發生錯誤: {e}")
@@ -88,6 +156,10 @@ class XQDirectoryMonitor:
         """開始監控目錄"""
         self.running = True
         logger.info(f"開始監控目錄: {self.watch_directory}")
+
+        # 首先初始化現有檔案（不發送通知）
+        await self.initialize_existing_files()
+        logger.info("現有檔案初始化完成，開始監控新增檔案...")
 
         while self.running:
             await self.check_and_send_updates()
@@ -122,7 +194,7 @@ class XQTelegramNotifier:
             # 發送啟動通知
             await self.bot.send_message(
                 chat_id=self.chat_id,
-                text="✅ XQ Telegram 通知服務已啟動\n正在監控目錄中的 .log 檔案和 xq_trigger.txt..."
+                text="✅ XQ Telegram 通知服務已啟動\n正在監控目錄中的 .log 檔案和 xq_trigger.txt...\n\n註：現有檔案不會推播，只推播新增的檔案"
             )
 
             # 啟動監控
